@@ -94,7 +94,37 @@ def pdf_to_image():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
         finally:
-            if os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+            try:
+                if os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+            except Exception:
+                pass
+
+# --- FITUR 4: KOMPRES PDF ---
+@app.route('/api/compress', methods=['POST'])
+def compress_pdf():
+    if 'file' not in request.files:
+        return jsonify({"error": "Tidak ada file"}), 400
+    
+    file = request.files['file']
+    if file:
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        file.save(temp_pdf.name)
+        temp_compressed = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_compressed.close()
+
+        try:
+            # Menggunakan pikepdf untuk mengoptimalkan/memperkecil struktur PDF
+            with pikepdf.Pdf.open(temp_pdf.name) as pdf:
+                pdf.save(temp_compressed.name, object_stream_mode=pikepdf.ObjectStreamMode.generate)
+            
+            return send_file(temp_compressed.name, as_attachment=True, download_name="pdf_terkompresi.pdf")
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            try:
+                if os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

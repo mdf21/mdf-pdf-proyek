@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { 
   FileText, Layers, Scissors, Image as ImageIcon, UploadCloud, 
   Trash2, AlertCircle, CheckCircle2, Menu, X, RefreshCw, Droplet,
-  Minimize, Lock, PenTool, Scan, FilePlus, Table, ShieldAlert, Settings
+  Minimize, Lock, PenTool, Scan, FilePlus, Table, ShieldAlert, Settings, Key
 } from 'lucide-react';
 
 // Dynamic import untuk pustaka pemroses PDF
@@ -28,16 +28,16 @@ export default function App() {
       title: "Optimasi & Konversi",
       items: [
         { id: 'img2pdf', label: 'JPG ke PDF', icon: ImageIcon, desc: 'Ubah gambar (JPG/PNG) menjadi PDF.', isReady: true },
-        { id: 'compress', label: 'Kompres PDF', icon: Minimize, desc: 'Kurangi ukuran file PDF.', isReady: false },
+        { id: 'compress', label: 'Kompres PDF', icon: Minimize, desc: 'Kurangi ukuran file PDF.', isReady: true },
         { id: 'pdf2office', label: 'PDF ke Word', icon: FileText, desc: 'Konversi PDF ke format Word (Terhubung ke Server).', isReady: true },
         { id: 'office2pdf', label: 'Office ke PDF', icon: FilePlus, desc: 'Konversi Word, Excel, PPT, HTML ke PDF.', isReady: false },
-        { id: 'pdf2jpg', label: 'PDF ke JPG', icon: ImageIcon, desc: 'Ubah halaman PDF menjadi gambar.', isReady: false },
+        { id: 'pdf2jpg', label: 'PDF ke JPG', icon: ImageIcon, desc: 'Ubah halaman PDF menjadi file gambar ZIP.', isReady: true }, // <-- DIBUKA
       ]
     },
     {
       title: "Keamanan & Lanjutan",
       items: [
-        { id: 'protect', label: 'Proteksi PDF', icon: Lock, desc: 'Beri atau hapus password pada PDF.', isReady: false },
+        { id: 'protect', label: 'Proteksi PDF', icon: Lock, desc: 'Beri password pada PDF agar aman.', isReady: true }, // <-- DIBUKA
         { id: 'sign', label: 'Tanda Tangan (eSign)', icon: PenTool, desc: 'Tambahkan tanda tangan digital.', isReady: false },
         { id: 'ocr', label: 'OCR (Teks ke Gambar)', icon: Scan, desc: 'Ekstrak teks dari hasil scan dokumen.', isReady: false },
         { id: 'redact', label: 'Redaksi Dokumen', icon: ShieldAlert, desc: 'Hapus informasi sensitif secara permanen.', isReady: false },
@@ -143,9 +143,12 @@ return (
             {activeTab === 'rotate' && <RotatePDF />}
             {activeTab === 'watermark' && <WatermarkPDF />}
             {activeTab === 'img2pdf' && <ImageToPDF />}
+            {activeTab === 'compress' && <CompressPDF />}
             {activeTab === 'pdf2office' && <PDFToWord />}
+            {activeTab === 'pdf2jpg' && <PDFToJPG />} 
+            {activeTab === 'protect' && <ProtectPDF />}
             
-            {/* Tampilan untuk fitur yang membutuhkan backend */}
+            {/* Tampilan untuk fitur yang belum kita buat kodenya */}
             {!currentTab.isReady && <BackendRequiredFeature featureName={currentTab.label} />}
           </div>
         </div>
@@ -154,7 +157,7 @@ return (
   );
 }
 
-// --- KOMPONEN FITUR ---
+// --- KOMPONEN FITUR LOKAL (BROWSER) ---
 
 // 1. Gabung PDF
 function MergePDF() {
@@ -179,7 +182,7 @@ function MergePDF() {
     setMessage({ text: 'Sedang menggabungkan...', type: 'info' });
 
     try {
-      const { PDFDocument } = await import(PDF_LIB_URL);
+      const { PDFDocument } = await import(/* @vite-ignore */ PDF_LIB_URL);
       const mergedPdf = await PDFDocument.create();
 
       for (const file of files) {
@@ -225,7 +228,7 @@ function SplitPDF() {
     setMessage({ text: 'Mengekstrak halaman...', type: 'info' });
 
     try {
-      const { PDFDocument } = await import(PDF_LIB_URL);
+      const { PDFDocument } = await import(/* @vite-ignore */ PDF_LIB_URL);
       const arrayBuffer = await file.arrayBuffer();
       const originalPdf = await PDFDocument.load(arrayBuffer);
       const newPdf = await PDFDocument.create();
@@ -264,7 +267,7 @@ function SplitPDF() {
   );
 }
 
-// 3. Putar PDF (Baru)
+// 3. Putar PDF
 function RotatePDF() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -277,7 +280,7 @@ function RotatePDF() {
     setMessage({ text: 'Memutar halaman...', type: 'info' });
 
     try {
-      const { PDFDocument, degrees } = await import(PDF_LIB_URL);
+      const { PDFDocument, degrees } = await import(/* @vite-ignore */ PDF_LIB_URL);
       const arrayBuffer = await file.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer);
       
@@ -307,7 +310,7 @@ function RotatePDF() {
   );
 }
 
-// 4. Tambah Watermark (Baru)
+// 4. Tambah Watermark
 function WatermarkPDF() {
   const [file, setFile] = useState(null);
   const [watermarkText, setWatermarkText] = useState('DOKUMEN RAHASIA');
@@ -321,7 +324,7 @@ function WatermarkPDF() {
     setMessage({ text: 'Menambahkan watermark...', type: 'info' });
 
     try {
-      const { PDFDocument, rgb, degrees } = await import(PDF_LIB_URL);
+      const { PDFDocument, rgb, degrees } = await import(/* @vite-ignore */ PDF_LIB_URL);
       const arrayBuffer = await file.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer);
       
@@ -378,7 +381,7 @@ function ImageToPDF() {
     setMessage({ text: 'Mengonversi gambar...', type: 'info' });
 
     try {
-      const { PDFDocument } = await import(PDF_LIB_URL);
+      const { PDFDocument } = await import(/* @vite-ignore */ PDF_LIB_URL);
       const pdfDoc = await PDFDocument.create();
 
       for (const file of files) {
@@ -414,7 +417,9 @@ function ImageToPDF() {
   );
 }
 
-// 6. PDF ke Word (Terhubung dengan Backend Server)
+// --- KOMPONEN FITUR SERVER (MEMBUTUHKAN BACKEND) ---
+
+// 6. PDF ke Word
 function PDFToWord() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -424,37 +429,26 @@ function PDFToWord() {
   const processBackend = async () => {
     if (!file) return;
     setIsProcessing(true);
-    setMessage({ text: 'Mengunggah ke server dan mengonversi...', type: 'info' });
+    setMessage({ text: 'Memproses di server...', type: 'info' });
 
-    // Gunakan FormData untuk mengirim file via API
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      // Endpoint ini mengarah ke server Python Flask yang berjalan secara lokal
-      const response = await fetch('http://127.0.0.1:5000/api/pdf2word', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch('http://127.0.0.1:5000/api/pdf2word', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal terhubung ke Server.');
 
-      if (!response.ok) {
-        throw new Error('Gagal terhubung ke Server. Pastikan server.py berjalan di port 5000.');
-      }
-
-      // Menerima file .docx dari server sebagai Blob
       const blob = await response.blob();
-      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '.docx'); // Ganti ekstensi file hasil unduhan
+      a.download = file.name.replace('.pdf', '.docx');
       a.click();
       URL.revokeObjectURL(url);
       
-      setMessage({ text: 'Berhasil dikonversi oleh server!', type: 'success' });
+      setMessage({ text: 'Berhasil dikonversi ke Word!', type: 'success' });
       setFile(null);
     } catch (error) {
-      console.error(error);
       setMessage({ text: error.message, type: 'error' });
     } finally {
       setIsProcessing(false);
@@ -463,39 +457,176 @@ function PDFToWord() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF (Maks. 50MB)" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
-      
-      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-sm text-yellow-800">
-        <strong>PENTING:</strong> Fitur ini melakukan <code>fetch()</code> ke <code>http://127.0.0.1:5000</code>. Anda wajib menjalankan <strong>server.py</strong> di terminal komputer Anda agar tombol ini bisa berfungsi.
-      </div>
-
       <StatusMessage message={message} />
       <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FileText} text="Konversi ke Word" />
     </div>
   );
 }
 
-// 7. Komponen Info untuk Fitur Server/Backend (Dummy)
+// 7. PDF ke Gambar (ZIP) - Fitur PRO Baru
+function PDFToJPG() {
+  const [file, setFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const processBackend = async () => {
+    if (!file) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Server sedang memotong PDF menjadi gambar...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/pdf2img', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal terhubung ke Server.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace('.pdf', '_gambar.zip'); // File berupa ZIP
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Berhasil! Gambar telah diunduh dalam bentuk file ZIP.', type: 'success' });
+      setFile(null);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={ImageIcon} text="Ubah ke JPG (ZIP)" />
+    </div>
+  );
+}
+
+// 8. Proteksi PDF (Beri Password) - Fitur PRO Baru
+function ProtectPDF() {
+  const [file, setFile] = useState(null);
+  const [password, setPassword] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const processBackend = async () => {
+    if (!file || !password) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Server sedang mengunci PDF Anda...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('password', password);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/protect', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal terhubung ke Server.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace('.pdf', '_terkunci.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Berhasil! File Anda telah diproteksi.', type: 'success' });
+      setFile(null);
+      setPassword('');
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      
+      {file && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+            <Key size={16}/> Masukkan Password untuk PDF ini:
+          </label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contoh: Rahasia123" className="w-full px-4 py-3 border border-gray-300 rounded-xl" />
+        </div>
+      )}
+      
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file || !password} icon={Lock} text="Kunci PDF" />
+    </div>
+  );
+}
+
+// 8.5 Kompres PDF - Fitur PRO Baru
+function CompressPDF() {
+  const [file, setFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const processBackend = async () => {
+    if (!file) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Server sedang mengompres PDF Anda...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/compress', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal terhubung ke Server.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace('.pdf', '_terkompresi.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Berhasil! Ukuran file PDF Anda telah diperkecil.', type: 'success' });
+      setFile(null);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF yang akan dikompres" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={Minimize} text="Kompres Sekarang" />
+    </div>
+  );
+}
+
+// 9. Komponen Info untuk Fitur Server yang belum kita buat kodenya
 function BackendRequiredFeature({ featureName }) {
   return (
     <div className="text-center py-12 space-y-6">
       <div className="bg-gradient-to-br from-orange-100 to-red-100 text-orange-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-orange-200">
         <Settings size={36} className="animate-spin-slow" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-800">Fitur "{featureName}" Membutuhkan Server</h3>
+      <h3 className="text-2xl font-bold text-gray-800">Fitur "{featureName}" Sedang Dalam Pengembangan</h3>
       <p className="text-gray-600 max-w-lg mx-auto leading-relaxed">
-        Fitur ini sangat kompleks. Tugas seperti <b>OCR</b>, <b>Kompresi Data</b>, <b>Enkripsi Kriptografi</b>, atau <b>Konversi Format (Word/Excel)</b> tidak dapat berjalan efektif hanya menggunakan Javascript di dalam browser.
+        Fitur ini rencananya akan dibuat di masa depan. Saat ini, logika Python di Backend Anda baru tersedia untuk <b>PDF ke Word</b>, <b>Proteksi PDF</b>, dan <b>PDF ke JPG</b>.
       </p>
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 max-w-lg mx-auto text-sm text-gray-600 text-left space-y-3">
-        <p>💡 <b>Kenapa fitur ini dikunci?</b></p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Browser memiliki batasan memori (RAM) untuk memproses kompresi tinggi.</li>
-          <li>Konversi format eksklusif Microsoft Office memerlukan pustaka backend (seperti Python <code>pdf2docx</code> atau sistem operasi Windows).</li>
-          <li>OCR memerlukan mesin pemroses AI (seperti Tesseract) yang terlalu besar untuk diunduh ke browser.</li>
-        </ul>
-        <p className="font-semibold text-blue-600 pt-2">Aplikasi ini dirancang untuk pemrosesan lokal 100% aman (offline).</p>
-      </div>
     </div>
   );
 }
