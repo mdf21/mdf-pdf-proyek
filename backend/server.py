@@ -1,3 +1,5 @@
+from docx2pdf import convert as docx_convert
+import pythoncom
 import os
 import tempfile
 import zipfile
@@ -125,6 +127,37 @@ def compress_pdf():
                 if os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
             except Exception:
                 pass
+# --- FITUR 5: OFFICE (WORD) KE PDF ---
+@app.route('/api/office2pdf', methods=['POST'])
+def office_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({"error": "Tidak ada file"}), 400
+    
+    file = request.files['file']
+    if file:
+        temp_docx = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+        file.save(temp_docx.name)
+        temp_docx.close()
+        
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_pdf.close()
 
+        try:
+            # Dibutuhkan oleh Windows agar Flask bisa menggunakan MS Word di background
+            pythoncom.CoInitialize()
+            
+            # Proses Konversi
+            docx_convert(temp_docx.name, temp_pdf.name)
+            
+            return send_file(temp_pdf.name, as_attachment=True, download_name="hasil_konversi.pdf")
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            try:
+                if os.path.exists(temp_docx.name): os.remove(temp_docx.name)
+                if os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+            except Exception:
+                pass
+            
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -30,14 +30,14 @@ export default function App() {
         { id: 'img2pdf', label: 'JPG ke PDF', icon: ImageIcon, desc: 'Ubah gambar (JPG/PNG) menjadi PDF.', isReady: true },
         { id: 'compress', label: 'Kompres PDF', icon: Minimize, desc: 'Kurangi ukuran file PDF.', isReady: true },
         { id: 'pdf2office', label: 'PDF ke Word', icon: FileText, desc: 'Konversi PDF ke format Word (Terhubung ke Server).', isReady: true },
-        { id: 'office2pdf', label: 'Office ke PDF', icon: FilePlus, desc: 'Konversi Word, Excel, PPT, HTML ke PDF.', isReady: false },
-        { id: 'pdf2jpg', label: 'PDF ke JPG', icon: ImageIcon, desc: 'Ubah halaman PDF menjadi file gambar ZIP.', isReady: true }, // <-- DIBUKA
+        { id: 'office2pdf', label: 'Office ke PDF', icon: FilePlus, desc: 'Konversi Word, Excel, PPT, HTML ke PDF.', isReady: true }, // <-- DIBUKA
+        { id: 'pdf2jpg', label: 'PDF ke JPG', icon: ImageIcon, desc: 'Ubah halaman PDF menjadi file gambar ZIP.', isReady: true }, 
       ]
     },
     {
       title: "Keamanan & Lanjutan",
       items: [
-        { id: 'protect', label: 'Proteksi PDF', icon: Lock, desc: 'Beri password pada PDF agar aman.', isReady: true }, // <-- DIBUKA
+        { id: 'protect', label: 'Proteksi PDF', icon: Lock, desc: 'Beri password pada PDF agar aman.', isReady: true }, 
         { id: 'sign', label: 'Tanda Tangan (eSign)', icon: PenTool, desc: 'Tambahkan tanda tangan digital.', isReady: false },
         { id: 'ocr', label: 'OCR (Teks ke Gambar)', icon: Scan, desc: 'Ekstrak teks dari hasil scan dokumen.', isReady: false },
         { id: 'redact', label: 'Redaksi Dokumen', icon: ShieldAlert, desc: 'Hapus informasi sensitif secara permanen.', isReady: false },
@@ -145,6 +145,7 @@ return (
             {activeTab === 'img2pdf' && <ImageToPDF />}
             {activeTab === 'compress' && <CompressPDF />}
             {activeTab === 'pdf2office' && <PDFToWord />}
+            {activeTab === 'office2pdf' && <OfficeToPDF />}
             {activeTab === 'pdf2jpg' && <PDFToJPG />} 
             {activeTab === 'protect' && <ProtectPDF />}
             
@@ -465,7 +466,54 @@ function PDFToWord() {
   );
 }
 
-// 7. PDF ke Gambar (ZIP) - Fitur PRO Baru
+// 7. Office (Word) ke PDF
+function OfficeToPDF() {
+  const [file, setFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const processBackend = async () => {
+    if (!file) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Server sedang mengonversi dokumen Anda ke PDF...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/office2pdf', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal terhubung ke Server atau format tidak didukung.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Menghapus ekstensi .docx dan menambahkan .pdf
+      a.download = file.name.substring(0, file.name.lastIndexOf('.')) + '.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Berhasil dikonversi ke PDF!', type: 'success' });
+      setFile(null);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file Word/Office (.docx)" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      <input type="file" accept=".doc,.docx,.rtf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FilePlus} text="Konversi ke PDF" />
+    </div>
+  );
+}
+
+// 8. PDF ke Gambar (ZIP) - Fitur PRO Baru
 function PDFToJPG() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -511,7 +559,7 @@ function PDFToJPG() {
   );
 }
 
-// 8. Proteksi PDF (Beri Password) - Fitur PRO Baru
+// 9. Proteksi PDF (Beri Password) - Fitur PRO Baru
 function ProtectPDF() {
   const [file, setFile] = useState(null);
   const [password, setPassword] = useState('');
@@ -570,7 +618,7 @@ function ProtectPDF() {
   );
 }
 
-// 8.5 Kompres PDF - Fitur PRO Baru
+// 10. Kompres PDF - Fitur PRO Baru
 function CompressPDF() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -616,7 +664,7 @@ function CompressPDF() {
   );
 }
 
-// 9. Komponen Info untuk Fitur Server yang belum kita buat kodenya
+// 11. Komponen Info untuk Fitur Server yang belum kita buat kodenya
 function BackendRequiredFeature({ featureName }) {
   return (
     <div className="text-center py-12 space-y-6">
