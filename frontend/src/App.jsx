@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { 
   FileText, Layers, Scissors, Image as ImageIcon, UploadCloud, 
   Trash2, AlertCircle, CheckCircle2, Menu, X, RefreshCw, Droplet,
-  Minimize, Lock, PenTool, Scan, FilePlus, Table, ShieldAlert, Settings, Key
+  Minimize, Lock, PenTool, Scan, FilePlus, ShieldAlert, Settings, Key,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 
 // Dynamic import untuk pustaka pemroses PDF
@@ -30,7 +31,7 @@ export default function App() {
         { id: 'img2pdf', label: 'JPG ke PDF', icon: ImageIcon, desc: 'Ubah gambar (JPG/PNG) menjadi PDF.', isReady: true },
         { id: 'compress', label: 'Kompres PDF', icon: Minimize, desc: 'Kurangi ukuran file PDF.', isReady: true },
         { id: 'pdf2office', label: 'PDF ke Word', icon: FileText, desc: 'Konversi PDF ke format Word (Terhubung ke Server).', isReady: true },
-        { id: 'office2pdf', label: 'Office ke PDF', icon: FilePlus, desc: 'Konversi Word, Excel, PPT, HTML ke PDF.', isReady: true }, // <-- DIBUKA
+        { id: 'office2pdf', label: 'Office ke PDF', icon: FilePlus, desc: 'Konversi Word, Excel, PPT, HTML ke PDF.', isReady: true },
         { id: 'pdf2jpg', label: 'PDF ke JPG', icon: ImageIcon, desc: 'Ubah halaman PDF menjadi file gambar ZIP.', isReady: true }, 
       ]
     },
@@ -59,7 +60,7 @@ export default function App() {
     <>
       <div className="p-6 flex items-center space-x-3 text-blue-600 sticky top-0 bg-white z-10 border-b border-gray-100">
         <FileText size={28} className="font-bold" />
-        <h1 className="text-xl font-bold tracking-tight">Super PDF</h1>
+        <h1 className="text-xl font-bold tracking-tight">MDF PDF</h1>
       </div>
       <div className="flex-1 overflow-y-auto pb-6">
         {menuCategories.map((category, idx) => (
@@ -86,58 +87,58 @@ export default function App() {
                       <span className="text-sm">{tab.label}</span>
                     </div>
                     {!tab.isReady && (
-                  <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">PRO</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                      <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">PRO</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
-    ))}
-  </div>
-</>
-);
+    </>
+  );
 
-return (
-<div className="flex h-screen bg-gray-50 font-sans text-gray-800 overflow-hidden">
-  {/* Sidebar Desktop */}
-  <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-200 shadow-sm overflow-hidden">
-    <SidebarContent />
-  </aside>
+  return (
+    <div className="flex h-screen bg-gray-50 font-sans text-gray-800 overflow-hidden">
+      {/* Sidebar Desktop */}
+      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-200 shadow-sm overflow-hidden">
+        <SidebarContent />
+      </aside>
 
-  {/* Mobile Header & Menu */}
-  <div className="md:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
-    <div className="flex justify-between items-center p-4">
+      {/* Mobile Header & Menu */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+        <div className="flex justify-between items-center p-4">
           <div className="flex items-center space-x-2 text-blue-600">
             <FileText size={24} />
             <h1 className="text-lg font-bold tracking-tight">Super PDF</h1>
           </div>
-      <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-    </div>
-    {isMobileMenuOpen && (
-      <nav className="bg-white border-b border-gray-200 h-[80vh] overflow-y-auto">
-        <SidebarContent />
-      </nav>
-    )}
-  </div>
-
-  {/* Main Content */}
-  <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 bg-gray-50">
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-800 flex items-center space-x-3">
-          <currentTab.icon className="text-blue-600" size={32} />
-          <span>{currentTab.label}</span>
-        </h2>
-        <p className="text-gray-500 mt-2 text-lg">
-          {currentTab.desc}
-        </p>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+        {isMobileMenuOpen && (
+          <nav className="bg-white border-b border-gray-200 h-[80vh] overflow-y-auto">
+            <SidebarContent />
+          </nav>
+        )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-        {/* Fitur yang tersedia */}
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center space-x-3">
+              <currentTab.icon className="text-blue-600" size={32} />
+              <span>{currentTab.label}</span>
+            </h2>
+            <p className="text-gray-500 mt-2 text-lg">
+              {currentTab.desc}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+            {/* Fitur yang tersedia */}
             {activeTab === 'merge' && <MergePDF />}
             {activeTab === 'split' && <SplitPDF />}
             {activeTab === 'rotate' && <RotatePDF />}
@@ -175,7 +176,31 @@ function MergePDF() {
     }
   };
 
+  const handleFileDrop = (droppedFiles) => {
+    const selectedFiles = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    setFiles(prev => [...prev, ...selectedFiles]);
+    setMessage({ text: '', type: '' });
+  };
+
   const removeFile = (index) => setFiles(files.filter((_, i) => i !== index));
+
+  const moveFileUp = (index) => {
+    if (index === 0) return;
+    setFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index - 1], newFiles[index]] = [newFiles[index], newFiles[index - 1]];
+      return newFiles;
+    });
+  };
+
+  const moveFileDown = (index) => {
+    if (index === files.length - 1) return;
+    setFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index + 1], newFiles[index]] = [newFiles[index], newFiles[index + 1]];
+      return newFiles;
+    });
+  };
 
   const processMerge = async () => {
     if (files.length < 2) return;
@@ -206,9 +231,9 @@ function MergePDF() {
 
   return (
     <div className="space-y-6">
-      <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih beberapa file PDF" />
+      <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) beberapa file PDF ke sini" />
       <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-      {files.length > 0 && <FileList files={files} onRemove={removeFile} />}
+      {files.length > 0 && <FileList files={files} onRemove={removeFile} onMoveUp={moveFileUp} onMoveDown={moveFileDown} />}
       <StatusMessage message={message} />
       <ProcessButton onClick={processMerge} isProcessing={isProcessing} disabled={files.length < 2} icon={Layers} text="Gabungkan PDF" />
     </div>
@@ -222,6 +247,11 @@ function SplitPDF() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processSplit = async () => {
     if (!file || !pages) return;
@@ -253,7 +283,7 @@ function SplitPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih satu file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) satu file PDF ke sini" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       
       {file && (
@@ -275,6 +305,11 @@ function RotatePDF() {
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
+
   const processRotate = async () => {
     if (!file) return;
     setIsProcessing(true);
@@ -288,7 +323,7 @@ function RotatePDF() {
       const pages = pdfDoc.getPages();
       pages.forEach((page) => {
         const currentRotation = page.getRotation().angle;
-        page.setRotation(degrees(currentRotation + 90)); // Putar 90 derajat searah jarum jam
+        page.setRotation(degrees(currentRotation + 90)); 
       });
 
       const pdfBytes = await pdfDoc.save();
@@ -303,7 +338,7 @@ function RotatePDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF untuk diputar" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF untuk diputar" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       <StatusMessage message={message} />
       <ProcessButton onClick={processRotate} isProcessing={isProcessing} disabled={!file} icon={RefreshCw} text="Putar Semua Halaman (90°)" />
@@ -318,6 +353,11 @@ function WatermarkPDF() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processWatermark = async () => {
     if (!file || !watermarkText) return;
@@ -336,7 +376,7 @@ function WatermarkPDF() {
           x: width / 4,
           y: height / 2,
           size: 50,
-          color: rgb(0.8, 0.2, 0.2), // Warna merah pudar
+          color: rgb(0.8, 0.2, 0.2), 
           opacity: 0.3,
           rotate: degrees(45),
         });
@@ -354,7 +394,7 @@ function WatermarkPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       
       {file && (
@@ -375,6 +415,30 @@ function ImageToPDF() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const selectedFiles = Array.from(droppedFiles).filter(f => f.type === 'image/jpeg' || f.type === 'image/png' || f.type === 'image/jpg');
+    setFiles(prev => [...prev, ...selectedFiles]);
+    setMessage({ text: '', type: '' });
+  };
+
+  const moveFileUp = (index) => {
+    if (index === 0) return;
+    setFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index - 1], newFiles[index]] = [newFiles[index], newFiles[index - 1]];
+      return newFiles;
+    });
+  };
+
+  const moveFileDown = (index) => {
+    if (index === files.length - 1) return;
+    setFiles(prev => {
+      const newFiles = [...prev];
+      [newFiles[index + 1], newFiles[index]] = [newFiles[index], newFiles[index + 1]];
+      return newFiles;
+    });
+  };
 
   const processImages = async () => {
     if (files.length === 0) return;
@@ -409,9 +473,9 @@ function ImageToPDF() {
 
   return (
     <div className="space-y-6">
-      <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih gambar (JPG/PNG)" />
+      <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) gambar (JPG/PNG)" />
       <input type="file" multiple accept="image/png, image/jpeg" className="hidden" ref={fileInputRef} onChange={(e) => setFiles(Array.from(e.target.files))} />
-      {files.length > 0 && <FileList files={files} onRemove={(idx) => setFiles(files.filter((_, i) => i !== idx))} isImage={true} />}
+      {files.length > 0 && <FileList files={files} onRemove={(idx) => setFiles(files.filter((_, i) => i !== idx))} onMoveUp={moveFileUp} onMoveDown={moveFileDown} isImage={true} />}
       <StatusMessage message={message} />
       <ProcessButton onClick={processImages} isProcessing={isProcessing} disabled={files.length === 0} icon={ImageIcon} text="Ubah ke PDF" />
     </div>
@@ -426,6 +490,11 @@ function PDFToWord() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processBackend = async () => {
     if (!file) return;
@@ -458,7 +527,7 @@ function PDFToWord() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       <StatusMessage message={message} />
       <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FileText} text="Konversi ke Word" />
@@ -472,6 +541,11 @@ function OfficeToPDF() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.name.endsWith('.doc') || f.name.endsWith('.docx') || f.name.endsWith('.rtf'));
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processBackend = async () => {
     if (!file) return;
@@ -489,7 +563,6 @@ function OfficeToPDF() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      // Menghapus ekstensi .docx dan menambahkan .pdf
       a.download = file.name.substring(0, file.name.lastIndexOf('.')) + '.pdf';
       a.click();
       URL.revokeObjectURL(url);
@@ -505,7 +578,7 @@ function OfficeToPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file Word/Office (.docx)" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file Word/Office (.docx)" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept=".doc,.docx,.rtf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       <StatusMessage message={message} />
       <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FilePlus} text="Konversi ke PDF" />
@@ -513,12 +586,17 @@ function OfficeToPDF() {
   );
 }
 
-// 8. PDF ke Gambar (ZIP) - Fitur PRO Baru
+// 8. PDF ke Gambar (ZIP) 
 function PDFToJPG() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processBackend = async () => {
     if (!file) return;
@@ -536,7 +614,7 @@ function PDFToJPG() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '_gambar.zip'); // File berupa ZIP
+      a.download = file.name.replace('.pdf', '_gambar.zip');
       a.click();
       URL.revokeObjectURL(url);
       
@@ -551,7 +629,7 @@ function PDFToJPG() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       <StatusMessage message={message} />
       <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={ImageIcon} text="Ubah ke JPG (ZIP)" />
@@ -559,13 +637,18 @@ function PDFToJPG() {
   );
 }
 
-// 9. Proteksi PDF (Beri Password) - Fitur PRO Baru
+// 9. Proteksi PDF (Beri Password)
 function ProtectPDF() {
   const [file, setFile] = useState(null);
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processBackend = async () => {
     if (!file || !password) return;
@@ -600,7 +683,7 @@ function ProtectPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       
       {file && (
@@ -618,12 +701,17 @@ function ProtectPDF() {
   );
 }
 
-// 10. Kompres PDF - Fitur PRO Baru
+// 10. Kompres PDF
 function CompressPDF() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
+    if (droppedFile) setFile(droppedFile);
+  };
 
   const processBackend = async () => {
     if (!file) return;
@@ -656,7 +744,7 @@ function CompressPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} text="Pilih file PDF yang akan dikompres" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
+      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF yang akan dikompres" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
       <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
       <StatusMessage message={message} />
       <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={Minimize} text="Kompres Sekarang" />
@@ -664,7 +752,7 @@ function CompressPDF() {
   );
 }
 
-// 11. Komponen Info untuk Fitur Server yang belum kita buat kodenya
+// 11. Komponen Info 
 function BackendRequiredFeature({ featureName }) {
   return (
     <div className="text-center py-12 space-y-6">
@@ -673,22 +761,51 @@ function BackendRequiredFeature({ featureName }) {
       </div>
       <h3 className="text-2xl font-bold text-gray-800">Fitur "{featureName}" Sedang Dalam Pengembangan</h3>
       <p className="text-gray-600 max-w-lg mx-auto leading-relaxed">
-        Fitur ini rencananya akan dibuat di masa depan. Saat ini, logika Python di Backend Anda baru tersedia untuk <b>PDF ke Word</b>, <b>Proteksi PDF</b>, dan <b>PDF ke JPG</b>.
+        Fitur ini rencananya akan dibuat di masa depan.
       </p>
     </div>
   );
 }
 
-
 // --- KOMPONEN BANTUAN UI ---
 
-function UploadZone({ onUpload, text }) {
+function UploadZone({ onUpload, onFileDrop, text }) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (onFileDrop) onFileDrop(e.dataTransfer.files);
+    }
+  };
+
   return (
-    <div onClick={onUpload} className="border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all group">
-      <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
-        <UploadCloud size={32} className="text-blue-500" />
+    <div 
+      onClick={onUpload} 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all group ${
+        isDragging ? 'border-blue-500 bg-blue-100 scale-[1.02]' : 'border-blue-300 bg-blue-50/50 hover:bg-blue-50'
+      }`}
+    >
+      <div className={`bg-white p-4 rounded-full shadow-sm mb-4 transition-transform ${isDragging ? 'scale-125' : 'group-hover:scale-110'}`}>
+        <UploadCloud size={32} className={`text-blue-500 ${isDragging ? 'animate-bounce' : ''}`} />
       </div>
-      <p className="text-gray-600 font-medium text-center">{text}</p>
+      <p className="text-gray-600 font-medium text-center">
+        {isDragging ? 'Lepaskan file Anda di sini...' : text}
+      </p>
     </div>
   );
 }
@@ -705,16 +822,30 @@ function SingleFile({ file, onRemove }) {
   );
 }
 
-function FileList({ files, onRemove, isImage }) {
+function FileList({ files, onRemove, onMoveUp, onMoveDown, isImage }) {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 max-h-60 overflow-y-auto space-y-2">
       {files.map((file, index) => (
-        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-100">
-          <div className="flex items-center space-x-3 overflow-hidden">
+        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-100 group">
+          <div className="flex items-center space-x-3 overflow-hidden flex-1">
+            <span className="text-xs font-bold text-gray-400 w-4 text-right shrink-0">{index + 1}.</span>
             {isImage ? <ImageIcon className="text-green-500 shrink-0" size={20} /> : <FileText className="text-blue-500 shrink-0" size={20} />}
             <span className="text-sm font-medium text-gray-700 truncate">{file.name}</span>
           </div>
-          <button onClick={() => onRemove(index)} className="text-red-400 hover:bg-red-50 p-1.5 rounded-md"><Trash2 size={16} /></button>
+          <div className="flex items-center space-x-1 shrink-0">
+            {onMoveUp && (
+              <button onClick={() => onMoveUp(index)} disabled={index === 0} className={`p-1.5 rounded-md transition-colors ${index === 0 ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}>
+                <ChevronUp size={18} />
+              </button>
+            )}
+            {onMoveDown && (
+              <button onClick={() => onMoveDown(index)} disabled={index === files.length - 1} className={`p-1.5 rounded-md transition-colors ${index === files.length - 1 ? 'text-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}>
+                <ChevronDown size={18} />
+              </button>
+            )}
+            {(onMoveUp || onMoveDown) && <div className="w-px h-5 bg-gray-200 mx-1"></div>}
+            <button onClick={() => onRemove(index)} className="text-red-400 hover:bg-red-50 p-1.5 rounded-md"><Trash2 size={16} /></button>
+          </div>
         </div>
       ))}
     </div>
