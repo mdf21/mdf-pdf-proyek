@@ -5,9 +5,11 @@ import {
   Minimize, Lock, PenTool, Scan, FilePlus, ShieldAlert, Settings, Key,
   ChevronUp, ChevronDown
 } from 'lucide-react';
+import JSZip from 'jszip';
 
 // Dynamic import untuk pustaka pemroses PDF
 const PDF_LIB_URL = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('merge');
@@ -60,7 +62,7 @@ export default function App() {
     <>
       <div className="p-6 flex items-center space-x-3 text-blue-600 sticky top-0 bg-white z-10 border-b border-gray-100">
         <FileText size={28} className="font-bold" />
-        <h1 className="text-xl font-bold tracking-tight">MDF PDF</h1>
+        <h1 className="text-xl font-bold tracking-tight">Super PDF</h1>
       </div>
       <div className="flex-1 overflow-y-auto pb-6">
         {menuCategories.map((category, idx) => (
@@ -242,38 +244,67 @@ function MergePDF() {
 
 // 2. Pisah PDF
 function SplitPDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [pages, setPages] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processSplit = async () => {
-    if (!file || !pages) return;
+    if (files.length === 0 || !pages) return;
     setIsProcessing(true);
-    setMessage({ text: 'Mengekstrak halaman...', type: 'info' });
+    setMessage({ text: `Mengekstrak halaman dari ${files.length} dokumen...`, type: 'info' });
 
     try {
       const { PDFDocument } = await import(/* @vite-ignore */ PDF_LIB_URL);
-      const arrayBuffer = await file.arrayBuffer();
-      const originalPdf = await PDFDocument.load(arrayBuffer);
-      const newPdf = await PDFDocument.create();
-      const totalPages = originalPdf.getPageCount();
-      
-      const pagesToExtract = pages.split(',').map(p => parseInt(p.trim()) - 1).filter(p => !isNaN(p) && p >= 0 && p < totalPages);
-      if (pagesToExtract.length === 0) throw new Error("Format tidak valid.");
+      const zip = new JSZip();
 
-      const copiedPages = await newPdf.copyPages(originalPdf, pagesToExtract);
-      copiedPages.forEach((page) => newPdf.addPage(page));
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const originalPdf = await PDFDocument.load(arrayBuffer);
+        const newPdf = await PDFDocument.create();
+        const totalPages = originalPdf.getPageCount();
+        
+        const pagesToExtract = pages.split(',').map(p => parseInt(p.trim()) - 1).filter(p => !isNaN(p) && p >= 0 && p < totalPages);
+        if (pagesToExtract.length === 0) continue;
 
-      const pdfBytes = await newPdf.save();
-      downloadFile(pdfBytes, 'PDF_Terpisah.pdf', 'application/pdf');
-      setMessage({ text: 'Halaman berhasil diekstrak!', type: 'success' });
+        const copiedPages = await newPdf.copyPages(originalPdf, pagesToExtract);
+        copiedPages.forEach((page) => newPdf.addPage(page));
+
+        const pdfBytes = await newPdf.save();
+        if (files.length === 1) {
+          downloadFile(pdfBytes, file.name.replace('.pdf', '_terpisah.pdf'), 'application/pdf');
+          setMessage({ text: 'Halaman berhasil diekstrak!', type: 'success' });
+          setFiles([]);
+          setIsProcessing(false);
+          return;
+        } else {
+          zip.file(file.name.replace('.pdf', '_terpisah.pdf'), pdfBytes);
+        }
+      }
+
+      if (files.length > 1) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pdf_terpisah.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+        setMessage({ text: 'Berhasil diekstrak dalam bentuk ZIP!', type: 'success' });
+        setFiles([]);
+      }
     } catch (error) {
       setMessage({ text: 'Gagal memisahkan file.', type: 'error' });
     } finally {
@@ -283,52 +314,94 @@ function SplitPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) satu file PDF ke sini" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF ke sini" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       
-      {file && (
+      {files.length > 0 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Ekstrak Halaman (pisahkan dengan koma):</label>
           <input type="text" value={pages} onChange={(e) => setPages(e.target.value)} placeholder="Contoh: 1, 3, 5-7 (Gunakan koma)" className="w-full px-4 py-3 border border-gray-300 rounded-xl" />
         </div>
       )}
       <StatusMessage message={message} />
-      <ProcessButton onClick={processSplit} isProcessing={isProcessing} disabled={!file || !pages} icon={Scissors} text="Pisahkan PDF" />
+      <ProcessButton onClick={processSplit} isProcessing={isProcessing} disabled={files.length === 0 || !pages} icon={Scissors} text="Pisahkan PDF" />
     </div>
   );
 }
 
 // 3. Putar PDF
 function RotatePDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processRotate = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setIsProcessing(true);
-    setMessage({ text: 'Memutar halaman...', type: 'info' });
+    setMessage({ text: `Memutar halaman dari ${files.length} dokumen...`, type: 'info' });
 
     try {
       const { PDFDocument, degrees } = await import(/* @vite-ignore */ PDF_LIB_URL);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      
-      const pages = pdfDoc.getPages();
-      pages.forEach((page) => {
-        const currentRotation = page.getRotation().angle;
-        page.setRotation(degrees(currentRotation + 90)); 
-      });
+      const zip = new JSZip();
 
-      const pdfBytes = await pdfDoc.save();
-      downloadFile(pdfBytes, 'PDF_Diputar.pdf', 'application/pdf');
-      setMessage({ text: 'PDF berhasil diputar 90 derajat!', type: 'success' });
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        
+        const pages = pdfDoc.getPages();
+        pages.forEach((page) => {
+          const currentRotation = page.getRotation().angle;
+          page.setRotation(degrees(currentRotation + 90)); 
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        if (files.length === 1) {
+          downloadFile(pdfBytes, file.name.replace('.pdf', '_diputar.pdf'), 'application/pdf');
+          setMessage({ text: 'PDF berhasil diputar 90 derajat!', type: 'success' });
+          setFiles([]);
+          setIsProcessing(false);
+          return;
+        } else {
+          zip.file(file.name.replace('.pdf', '_diputar.pdf'), pdfBytes);
+        }
+      }
+
+      if (files.length > 1) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pdf_diputar.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+        setMessage({ text: 'PDF berhasil diputar dalam ZIP!', type: 'success' });
+        setFiles([]);
+      }
     } catch (error) {
       setMessage({ text: 'Gagal memutar PDF.', type: 'error' });
     } finally {
@@ -338,53 +411,95 @@ function RotatePDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF untuk diputar" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF untuk diputar" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       <StatusMessage message={message} />
-      <ProcessButton onClick={processRotate} isProcessing={isProcessing} disabled={!file} icon={RefreshCw} text="Putar Semua Halaman (90°)" />
+      <ProcessButton onClick={processRotate} isProcessing={isProcessing} disabled={files.length === 0} icon={RefreshCw} text="Putar Semua Halaman (90°)" />
     </div>
   );
 }
 
 // 4. Tambah Watermark
 function WatermarkPDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [watermarkText, setWatermarkText] = useState('DOKUMEN RAHASIA');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processWatermark = async () => {
-    if (!file || !watermarkText) return;
+    if (files.length === 0 || !watermarkText) return;
     setIsProcessing(true);
-    setMessage({ text: 'Menambahkan watermark...', type: 'info' });
+    setMessage({ text: `Menambahkan watermark ke ${files.length} dokumen...`, type: 'info' });
 
     try {
       const { PDFDocument, rgb, degrees } = await import(/* @vite-ignore */ PDF_LIB_URL);
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      
-      const pages = pdfDoc.getPages();
-      pages.forEach((page) => {
-        const { width, height } = page.getSize();
-        page.drawText(watermarkText, {
-          x: width / 4,
-          y: height / 2,
-          size: 50,
-          color: rgb(0.8, 0.2, 0.2), 
-          opacity: 0.3,
-          rotate: degrees(45),
-        });
-      });
+      const zip = new JSZip();
 
-      const pdfBytes = await pdfDoc.save();
-      downloadFile(pdfBytes, 'PDF_Watermark.pdf', 'application/pdf');
-      setMessage({ text: 'Watermark berhasil ditambahkan!', type: 'success' });
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        
+        const pages = pdfDoc.getPages();
+        pages.forEach((page) => {
+          const { width, height } = page.getSize();
+          page.drawText(watermarkText, {
+            x: width / 4,
+            y: height / 2,
+            size: 50,
+            color: rgb(0.8, 0.2, 0.2), 
+            opacity: 0.3,
+            rotate: degrees(45),
+          });
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        if (files.length === 1) {
+          downloadFile(pdfBytes, file.name.replace('.pdf', '_watermark.pdf'), 'application/pdf');
+          setMessage({ text: 'Watermark berhasil ditambahkan!', type: 'success' });
+          setFiles([]);
+          setIsProcessing(false);
+          return;
+        } else {
+          zip.file(file.name.replace('.pdf', '_watermark.pdf'), pdfBytes);
+        }
+      }
+
+      if (files.length > 1) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pdf_watermark.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+        setMessage({ text: 'Watermark berhasil ditambahkan dalam ZIP!', type: 'success' });
+        setFiles([]);
+      }
     } catch (error) {
       setMessage({ text: 'Gagal menambahkan watermark.', type: 'error' });
     } finally {
@@ -394,17 +509,30 @@ function WatermarkPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       
-      {file && (
+      {files.length > 0 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Teks Watermark:</label>
           <input type="text" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-xl" />
         </div>
       )}
       <StatusMessage message={message} />
-      <ProcessButton onClick={processWatermark} isProcessing={isProcessing} disabled={!file || !watermarkText} icon={Droplet} text="Pasang Watermark" />
+      <ProcessButton onClick={processWatermark} isProcessing={isProcessing} disabled={files.length === 0 || !watermarkText} icon={Droplet} text="Pasang Watermark" />
     </div>
   );
 }
@@ -486,38 +614,44 @@ function ImageToPDF() {
 
 // 6. PDF ke Word
 function PDFToWord() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processBackend = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setIsProcessing(true);
-    setMessage({ text: 'Memproses di server...', type: 'info' });
+    setMessage({ text: `Memproses ${files.length} dokumen di server...`, type: 'info' });
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => formData.append('file', file));
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/pdf2word', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/pdf2word`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Gagal terhubung ke Server.');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '.docx');
+      a.download = files.length > 1 ? 'pdf_ke_word.zip' : files[0].name.replace('.pdf', '.docx');
       a.click();
       URL.revokeObjectURL(url);
       
       setMessage({ text: 'Berhasil dikonversi ke Word!', type: 'success' });
-      setFile(null);
+      setFiles([]);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     } finally {
@@ -527,48 +661,67 @@ function PDFToWord() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       <StatusMessage message={message} />
-      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FileText} text="Konversi ke Word" />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0} icon={FileText} text="Konversi ke Word" />
     </div>
   );
 }
 
 // 7. Office (Word) ke PDF
 function OfficeToPDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.name.endsWith('.doc') || f.name.endsWith('.docx') || f.name.endsWith('.rtf'));
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.name.endsWith('.doc') || f.name.endsWith('.docx') || f.name.endsWith('.rtf'));
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processBackend = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setIsProcessing(true);
-    setMessage({ text: 'Server sedang mengonversi dokumen Anda ke PDF...', type: 'info' });
+    setMessage({ text: `Server sedang mengonversi ${files.length} dokumen Anda ke PDF...`, type: 'info' });
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => formData.append('file', file));
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/office2pdf', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/office2pdf`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Gagal terhubung ke Server atau format tidak didukung.');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.substring(0, file.name.lastIndexOf('.')) + '.pdf';
+      a.download = files.length > 1 ? 'office_ke_pdf.zip' : files[0].name.substring(0, files[0].name.lastIndexOf('.')) + '.pdf';
       a.click();
       URL.revokeObjectURL(url);
       
       setMessage({ text: 'Berhasil dikonversi ke PDF!', type: 'success' });
-      setFile(null);
+      setFiles([]);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     } finally {
@@ -578,48 +731,67 @@ function OfficeToPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file Word/Office (.docx)" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept=".doc,.docx,.rtf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file Word/Office (.docx)" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File Office Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept=".doc,.docx,.rtf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       <StatusMessage message={message} />
-      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={FilePlus} text="Konversi ke PDF" />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0} icon={FilePlus} text="Konversi ke PDF" />
     </div>
   );
 }
 
 // 8. PDF ke Gambar (ZIP) 
 function PDFToJPG() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processBackend = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setIsProcessing(true);
     setMessage({ text: 'Server sedang memotong PDF menjadi gambar...', type: 'info' });
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => formData.append('file', file));
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/pdf2img', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/pdf2img`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Gagal terhubung ke Server.');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '_gambar.zip');
+      a.download = files.length > 1 ? 'gambar_pdf.zip' : files[0].name.replace('.pdf', '_gambar.zip');
       a.click();
       URL.revokeObjectURL(url);
       
       setMessage({ text: 'Berhasil! Gambar telah diunduh dalam bentuk file ZIP.', type: 'success' });
-      setFile(null);
+      setFiles([]);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     } finally {
@@ -629,50 +801,69 @@ function PDFToJPG() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       <StatusMessage message={message} />
-      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={ImageIcon} text="Ubah ke JPG (ZIP)" />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0} icon={ImageIcon} text="Ubah ke JPG (ZIP)" />
     </div>
   );
 }
 
 // 9. Proteksi PDF (Beri Password)
 function ProtectPDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processBackend = async () => {
-    if (!file || !password) return;
+    if (files.length === 0 || !password) return;
     setIsProcessing(true);
-    setMessage({ text: 'Server sedang mengunci PDF Anda...', type: 'info' });
+    setMessage({ text: `Server sedang mengunci ${files.length} PDF Anda...`, type: 'info' });
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => formData.append('file', file));
     formData.append('password', password);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/protect', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/protect`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Gagal terhubung ke Server.');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '_terkunci.pdf');
+      a.download = files.length > 1 ? 'pdf_terkunci.zip' : files[0].name.replace('.pdf', '_terkunci.pdf');
       a.click();
       URL.revokeObjectURL(url);
       
       setMessage({ text: 'Berhasil! File Anda telah diproteksi.', type: 'success' });
-      setFile(null);
+      setFiles([]);
       setPassword('');
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
@@ -683,10 +874,23 @@ function ProtectPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={removeFile} />
+          <button onClick={() => fileInputRef.current.click()} className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 font-medium">
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
       
-      {file && (
+      {files.length > 0 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
             <Key size={16}/> Masukkan Password untuk PDF ini:
@@ -696,45 +900,69 @@ function ProtectPDF() {
       )}
       
       <StatusMessage message={message} />
-      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file || !password} icon={Lock} text="Kunci PDF" />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0 || !password} icon={Lock} text="Kunci PDF" />
     </div>
   );
 }
 
 // 10. Kompres PDF
 function CompressPDF() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [targetSize, setTargetSize] = useState('');
+  const [unit, setUnit] = useState('KB');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
 
   const handleFileDrop = (droppedFiles) => {
-    const droppedFile = Array.from(droppedFiles).find(f => f.type === 'application/pdf');
-    if (droppedFile) setFile(droppedFile);
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) {
+      setFiles(prev => [...prev, ...droppedFilesArray]);
+    }
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, idx) => idx !== indexToRemove));
   };
 
   const processBackend = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setIsProcessing(true);
-    setMessage({ text: 'Server sedang mengompres PDF Anda...', type: 'info' });
+    
+    let infoMessage = `Server sedang mengompres ${files.length} PDF Anda`;
+    if (targetSize) {
+      infoMessage += ` (Target: ${targetSize} ${unit})...`;
+    } else {
+      infoMessage += ' secara otomatis...';
+    }
+    
+    setMessage({ text: infoMessage, type: 'info' });
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => {
+      formData.append('file', file);
+    });
+    
+    if (targetSize) {
+      formData.append('targetSize', targetSize);
+      formData.append('unit', unit);
+    }
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/compress', { method: 'POST', body: formData });
+      const response = await fetch(`${API_BASE_URL}/api/compress`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Gagal terhubung ke Server.');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.name.replace('.pdf', '_terkompresi.pdf');
+      a.download = files.length > 1 ? 'pdf_terkompresi.zip' : files[0].name.replace('.pdf', '_terkompresi.pdf');
       a.click();
       URL.revokeObjectURL(url);
       
       setMessage({ text: 'Berhasil! Ukuran file PDF Anda telah diperkecil.', type: 'success' });
-      setFile(null);
+      setFiles([]);
+      setTargetSize('');
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     } finally {
@@ -744,10 +972,61 @@ function CompressPDF() {
 
   return (
     <div className="space-y-6">
-      {!file ? <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF yang akan dikompres" /> : <SingleFile file={file} onRemove={() => setFile(null)} />}
-      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} />
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) file PDF yang akan dikompres" />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {files.map((f, idx) => (
+              <SingleFile key={idx} file={f} onRemove={() => removeFile(idx)} />
+            ))}
+          </div>
+          <button 
+            onClick={() => fileInputRef.current.click()} 
+            className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors font-medium flex justify-center items-center gap-2"
+          >
+            + Tambah File PDF Lainnya
+          </button>
+        </div>
+      )}
+      <input type="file" multiple accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
+        e.target.value = null;
+      }} />
+      
+      {/* UI Tambahan untuk Input Target Ukuran File */}
+      {files.length > 0 && (
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+          <label className="block text-sm font-semibold text-gray-700">
+            Target Ukuran File <span className="text-gray-400 font-normal">(Opsional)</span>
+          </label>
+          <div className="flex space-x-3">
+            <input 
+              type="number" 
+              min="1"
+              value={targetSize} 
+              onChange={(e) => setTargetSize(e.target.value)} 
+              placeholder="Contoh: 500" 
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
+            />
+            <select 
+              value={unit} 
+              onChange={(e) => setUnit(e.target.value)} 
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+            >
+              <option value="KB">KB</option>
+              <option value="MB">MB</option>
+            </select>
+          </div>
+          <p className="text-xs text-gray-500">
+            Biarkan kosong jika Anda ingin menggunakan kompresi otomatis (rekomendasi).
+          </p>
+        </div>
+      )}
+
       <StatusMessage message={message} />
-      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={!file} icon={Minimize} text="Kompres Sekarang" />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0} icon={Minimize} text="Kompres Sekarang" />
     </div>
   );
 }
