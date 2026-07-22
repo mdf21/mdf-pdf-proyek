@@ -4,3 +4,4 @@ pdf2docx
 Werkzeug
 pikepdf
 PyMuPDF
+Pillow
