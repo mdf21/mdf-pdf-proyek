@@ -261,63 +261,59 @@ def protect_pdf():
                 if os.path.exists(p): os.remove(p)
             except: pass
 
-# --- FITUR 5: KOMPRES PDF (DENGAN TARGET UKURAN) ---
-def compress_with_image_reduction(pdf_path, output_path, max_width=800, max_height=600):
-    """Kompresi PDF dengan mengurangi kualitas dan ukuran gambar"""
-    try:
-        doc = fitz.open(pdf_path)
+# --- FITUR 5: KOMPRES PDF ---
+def run_ghostscript(input_path, output_path, quality_level='high'):
+    gs_cmd = 'gswin64c' if os.name == 'nt' else 'gs'
+    
+    cmd = [
+        gs_cmd,
+        "-sDEVICE=pdfwrite",
+        "-dCompatibilityLevel=1.4",
+        "-dDetectDuplicateImages=true",
+        "-dCompressFonts=true",
+        "-dSubsetFonts=true",
+        "-dNOPAUSE",
+        "-dQUIET",
+        "-dBATCH"
+    ]
+    
+    if quality_level == 'low':
+        cmd.extend([
+            "-dPDFSETTINGS=/prepress",
+            "-dColorImageResolution=150",
+            "-dGrayImageResolution=150",
+            "-dMonoImageResolution=150"
+        ])
+    elif quality_level == 'medium':
+        cmd.extend([
+            "-dPDFSETTINGS=/printer",
+            "-dColorImageResolution=100",
+            "-dGrayImageResolution=100",
+            "-dMonoImageResolution=100"
+        ])
+    elif quality_level == 'extreme':
+        cmd.extend([
+            "-dPDFSETTINGS=/screen",
+            "-dColorImageResolution=50",
+            "-dGrayImageResolution=50",
+            "-dMonoImageResolution=50",
+            "-dAutoFilterColorImages=false",
+            "-dColorImageFilter=/DCTEncode",
+            "-dJPEGQ=45"
+        ])
+    else:
+        # Default 'high'
+        cmd.extend([
+            "-dPDFSETTINGS=/ebook",
+            "-dColorImageResolution=72",
+            "-dGrayImageResolution=72",
+            "-dMonoImageResolution=72"
+        ])
         
-        # Iterasi setiap halaman untuk kompresi gambar
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            
-            # Dapatkan semua gambar di halaman
-            images = page.get_images()
-            
-            for img_index in images:
-                xref = img_index[0]
-                
-                try:
-                    # Ekstrak gambar
-                    pix = fitz.Pixmap(doc, xref)
-                    
-                    # Turunkan kualitas: dari RGB ke L (grayscale) jika perlu
-                    if pix.n - pix.alpha > 1:  # Jika bukan grayscale
-                        pix = fitz.Pixmap(fitz.csGRAY, pix)
-                    
-                    # Buat pixmap baru dengan dimensi yang lebih kecil (sample 75%)
-                    new_width = max(int(pix.width * 0.75), 100)
-                    new_height = max(int(pix.height * 0.75), 100)
-                    
-                    if pix.width > max_width or pix.height > max_height:
-                        # Resize gambar
-                        ratio = min(max_width / pix.width, max_height / pix.height)
-                        new_width = int(pix.width * ratio)
-                        new_height = int(pix.height * ratio)
-                    
-                    # Kompresi gambar
-                    new_pix = fitz.Pixmap(pix, new_width, new_height)
-                    
-                    # Ganti gambar di PDF
-                    image_bytes = new_pix.tobytes("jpeg")
-                    doc.replace_image(xref, stream=image_bytes)
-                    
-                except Exception as e:
-                    print(f"Tidak dapat mengompresi gambar {xref}: {e}")
-        
-        # Simpan dengan kompresi maksimal
-        doc.save(
-            output_path,
-            garbage=4,
-            deflate=True,
-            clean=True,
-            pretty=False
-        )
-        doc.close()
-        return True
-    except Exception as e:
-        print(f"Error dalam image reduction: {e}")
-        return False
+    cmd.append(f"-sOutputFile={output_path}")
+    cmd.append(input_path)
+    
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 @app.route('/api/compress', methods=['POST'])
 def compress_pdf():
@@ -330,6 +326,7 @@ def compress_pdf():
         
     target_size = request.form.get('targetSize')
     unit = request.form.get('unit', 'KB')
+    compression_level = request.form.get('compressionLevel', 'high')
     
     target_bytes = None
     if target_size and target_size.strip() != "":
@@ -349,91 +346,56 @@ def compress_pdf():
             
             temp_compressed = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
             temp_compressed.close()
-            compressed_files.append((file.filename, temp_compressed.name))
-
-            # 1. Kompresi dasar dengan PyMuPDF
-            doc = fitz.open(temp_pdf.name)
-            doc.save(temp_compressed.name, garbage=4, deflate=True, clean=True)
-            doc.close()
             
-            current_size = os.path.getsize(temp_compressed.name)
-            
-            # 2. Jika belum mencapai target, coba kurangi kualitas gambar
-            if target_bytes and current_size > target_bytes:
-                print(f"Kompresi gambar... (Ukuran saat ini: {current_size/1024:.1f}KB, Target: {target_bytes/1024:.1f}KB)")
-                
-                # Tingkat pengurangan kualitas gambar
-                quality_steps = [
-                    {'max_width': 800, 'max_height': 600},   # 75% ukuran gambar
-                    {'max_width': 600, 'max_height': 450},   # 50% ukuran gambar
-                    {'max_width': 400, 'max_height': 300},   # 30% ukuran gambar
-                    {'max_width': 200, 'max_height': 150},   # 20% ukuran gambar
-                ]
-                
-                for step in quality_steps:
-                    if current_size <= target_bytes:
-                        break
+            try:
+                if target_bytes:
+                    print(f"Mengompresi dengan target ukuran: {target_bytes/1024:.1f} KB")
+                    levels_to_try = ['low', 'medium', 'high', 'extreme']
+                    best_size = float('inf')
+                    best_file = None
                     
-                    temp_quality = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-                    temp_quality.close()
-                    
-                    compress_with_image_reduction(
-                        temp_compressed.name, 
-                        temp_quality.name,
-                        max_width=step['max_width'],
-                        max_height=step['max_height']
-                    )
-                    
-                    new_size = os.path.getsize(temp_quality.name)
-                    if new_size < current_size:  # Hanya gunakan jika lebih kecil
-                        shutil.copy(temp_quality.name, temp_compressed.name)
-                        current_size = new_size
-                        print(f"Ukuran setelah kompresi: {new_size/1024:.1f}KB")
-                    
-                    os.remove(temp_quality.name)
-            
-            # 3. Terakhir, coba Ghostscript untuk ukuran sangat kecil atau jika target belum tercapai
-            if not target_bytes or (target_bytes and os.path.getsize(temp_compressed.name) > target_bytes):
-                quality_levels = ['/ebook', '/screen'] if target_bytes else ['/screen']
-                gs_cmd = 'gswin64c' if os.name == 'nt' else 'gs'
-                
-                print(f"🚀 Menggunakan Ghostscript untuk kompresi ekstrem...")
-                for quality in quality_levels:
-                    try:
+                    for level in levels_to_try:
                         temp_gs = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
                         temp_gs.close()
                         
-                        print(f"📊 Mencoba Ghostscript dengan setting {quality}...")
-                        subprocess.run([
-                            gs_cmd, '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.4',
-                            f'-dPDFSETTINGS={quality}',
-                            '-dNOPAUSE', '-dQUIET', '-dBATCH',
-                            f'-sOutputFile={temp_gs.name}', temp_compressed.name
-                        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        
-                        gs_size = os.path.getsize(temp_gs.name)
-                        
-                        if target_bytes:
-                            print(f"✅ Ghostscript berhasil! Ukuran: {gs_size/1024:.1f}KB (Target: {target_bytes/1024:.1f}KB)")
-                            if gs_size <= target_bytes:
-                                shutil.copy(temp_gs.name, temp_compressed.name)
+                        try:
+                            print(f"Mencoba Ghostscript level: {level}...")
+                            run_ghostscript(temp_pdf.name, temp_gs.name, level)
+                            current_size = os.path.getsize(temp_gs.name)
+                            
+                            if current_size < best_size:
+                                best_size = current_size
+                                if best_file and os.path.exists(best_file):
+                                    os.remove(best_file)
+                                best_file = temp_gs.name
+                            else:
                                 os.remove(temp_gs.name)
-                                print(f"✨ TARGET TERCAPAI! File dikompres ke {gs_size/1024:.1f}KB")
+                                
+                            if best_size <= target_bytes:
+                                print(f"✅ Target tercapai pada level {level}: {best_size/1024:.1f} KB")
                                 break
-                        else:
-                            print(f"✅ Ghostscript berhasil! Ukuran: {gs_size/1024:.1f}KB (Kompresi Ekstrem)")
-                            if gs_size < os.path.getsize(temp_compressed.name):
-                                shutil.copy(temp_gs.name, temp_compressed.name)
-                            os.remove(temp_gs.name)
-                            break
-                        
-                        if os.path.exists(temp_gs.name):
-                            os.remove(temp_gs.name)
-                    except FileNotFoundError:
-                        print("❌ Ghostscript tidak tersedia di sistem ini")
-                        break
-                    except Exception as e:
-                        print(f"⚠️  Ghostscript error: {e}")
+                        except Exception as e:
+                            print(f"Error pada Ghostscript level {level}: {e}")
+                            if os.path.exists(temp_gs.name):
+                                os.remove(temp_gs.name)
+                                
+                    if best_file:
+                        shutil.copy(best_file, temp_compressed.name)
+                        os.remove(best_file)
+                    else:
+                        shutil.copy(temp_pdf.name, temp_compressed.name)
+                else:
+                    print(f"Mengompresi dengan level: {compression_level}")
+                    run_ghostscript(temp_pdf.name, temp_compressed.name, compression_level)
+                    
+            except FileNotFoundError:
+                print("❌ Ghostscript tidak tersedia di sistem ini")
+                shutil.copy(temp_pdf.name, temp_compressed.name)
+            except Exception as e:
+                print(f"⚠️ Error kompresi: {e}")
+                shutil.copy(temp_pdf.name, temp_compressed.name)
+                
+            compressed_files.append((file.filename, temp_compressed.name))
 
         if len(compressed_files) == 1:
             return send_file(compressed_files[0][1], as_attachment=True, download_name=compressed_files[0][0].replace('.pdf', '_terkompresi.pdf'))

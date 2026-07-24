@@ -910,6 +910,7 @@ function CompressPDF() {
   const [files, setFiles] = useState([]);
   const [targetSize, setTargetSize] = useState('');
   const [unit, setUnit] = useState('KB');
+  const [compressionLevel, setCompressionLevel] = useState('high');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
@@ -931,9 +932,9 @@ function CompressPDF() {
     
     let infoMessage = `Server sedang mengompres ${files.length} PDF Anda`;
     if (targetSize) {
-      infoMessage += ` (Target: ${targetSize} ${unit})...`;
+      infoMessage += ` (Target: ${targetSize} ${unit})... Ghostscript sedang mengoptimalkan gambar secara iteratif.`;
     } else {
-      infoMessage += ' secara otomatis...';
+      infoMessage += ' menggunakan Ghostscript...';
     }
     
     setMessage({ text: infoMessage, type: 'info' });
@@ -946,6 +947,8 @@ function CompressPDF() {
     if (targetSize) {
       formData.append('targetSize', targetSize);
       formData.append('unit', unit);
+    } else {
+      formData.append('compressionLevel', compressionLevel);
     }
 
     try {
@@ -995,33 +998,53 @@ function CompressPDF() {
         e.target.value = null;
       }} />
       
-      {/* UI Tambahan untuk Input Target Ukuran File */}
+      {/* UI Tambahan untuk Pilihan Kualitas dan Target Ukuran */}
       {files.length > 0 && (
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
-          <label className="block text-sm font-semibold text-gray-700">
-            Target Ukuran File <span className="text-gray-400 font-normal">(Opsional)</span>
-          </label>
-          <div className="flex space-x-3">
-            <input 
-              type="number" 
-              min="1"
-              value={targetSize} 
-              onChange={(e) => setTargetSize(e.target.value)} 
-              placeholder="Contoh: 500" 
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
-            />
-            <select 
-              value={unit} 
-              onChange={(e) => setUnit(e.target.value)} 
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">
+              Level Kompresi
+            </label>
+            <select
+              value={compressionLevel}
+              onChange={(e) => setCompressionLevel(e.target.value)}
+              disabled={targetSize !== ''}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium ${targetSize ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white border-gray-300'}`}
             >
-              <option value="KB">KB</option>
-              <option value="MB">MB</option>
+              <option value="low">Rendah (Kualitas Terbaik, Ukuran Terbesar)</option>
+              <option value="medium">Sedang (Kualitas Baik, Ukuran Sedang)</option>
+              <option value="high">Tinggi (Kualitas Standar, Ukuran Kecil)</option>
+              <option value="extreme">Ekstrem (Kualitas Rendah, Ukuran Sangat Kecil)</option>
             </select>
           </div>
-          <p className="text-xs text-gray-500">
-            Biarkan kosong jika Anda ingin menggunakan kompresi otomatis (rekomendasi).
-          </p>
+
+          <div className="pt-2 border-t border-gray-100">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Atau Gunakan Target Ukuran <span className="text-gray-400 font-normal">(Opsional)</span>
+            </label>
+            <div className="flex space-x-3">
+              <input 
+                type="number" 
+                min="1"
+                value={targetSize} 
+                onChange={(e) => setTargetSize(e.target.value)} 
+                placeholder="Contoh: 500" 
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
+              />
+              <select 
+                value={unit} 
+                onChange={(e) => setUnit(e.target.value)} 
+                className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+              >
+                <option value="KB">KB</option>
+                <option value="MB">MB</option>
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Jika diisi, Level Kompresi di atas akan diabaikan. Ghostscript akan mencoba secara berulang hingga target tercapai.
+            </p>
+          </div>
         </div>
       )}
 
