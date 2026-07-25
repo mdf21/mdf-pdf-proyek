@@ -372,7 +372,7 @@ def compress_pdf():
                                 os.remove(temp_gs.name)
                                 
                             if best_size <= target_bytes:
-                                print(f"✅ Target tercapai pada level {level}: {best_size/1024:.1f} KB")
+                                print(f"Target tercapai pada level {level}: {best_size/1024:.1f} KB")
                                 break
                         except Exception as e:
                             print(f"Error pada Ghostscript level {level}: {e}")
@@ -389,10 +389,10 @@ def compress_pdf():
                     run_ghostscript(temp_pdf.name, temp_compressed.name, compression_level)
                     
             except FileNotFoundError:
-                print("❌ Ghostscript tidak tersedia di sistem ini")
+                print("Ghostscript tidak tersedia di sistem ini")
                 shutil.copy(temp_pdf.name, temp_compressed.name)
             except Exception as e:
-                print(f"⚠️ Error kompresi: {e}")
+                print(f"Error kompresi: {e}")
                 shutil.copy(temp_pdf.name, temp_compressed.name)
                 
             compressed_files.append((file.filename, temp_compressed.name))
