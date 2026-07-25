@@ -155,6 +155,11 @@ export default function App() {
             {/* Tampilan untuk fitur yang belum kita buat kodenya */}
             {!currentTab.isReady && <BackendRequiredFeature featureName={currentTab.label} />}
           </div>
+
+          {/* Footer */}
+          <footer className="mt-8 text-center text-gray-500 text-sm pb-4">
+            By MDF Media 22
+          </footer>
         </div>
       </main>
     </div>
