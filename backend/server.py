@@ -418,5 +418,164 @@ def compress_pdf():
                 if os.path.exists(path): os.remove(path)
             except: pass
 
+# --- FITUR PRO: ORGANISASI (REORDER/DELETE) ---
+@app.route('/api/organize', methods=['POST'])
+def organize_pdf():
+    if 'file' not in request.files or 'pages' not in request.form:
+        return jsonify({"error": "Data tidak lengkap"}), 400
+        
+    file = request.files['file']
+    pages_str = request.form['pages']
+    
+    try:
+        pages_list = [int(p.strip()) for p in pages_str.split(',') if p.strip().isdigit()]
+        if not pages_list:
+            return jsonify({"error": "Format halaman tidak valid"}), 400
+            
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        file.save(temp_pdf.name)
+        
+        doc = fitz.open(temp_pdf.name)
+        doc.select(pages_list)
+        
+        temp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_out.close()
+        doc.save(temp_out.name)
+        doc.close()
+        
+        dl_name = file.filename.replace('.pdf', '_terorganisir.pdf')
+        return send_file(temp_out.name, as_attachment=True, download_name=dl_name)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        try:
+            if 'temp_pdf' in locals() and os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+        except: pass
+
+# --- FITUR PRO: TANDA TANGAN (eSIGN) ---
+@app.route('/api/sign', methods=['POST'])
+def sign_pdf():
+    if 'file' not in request.files or 'signature' not in request.files:
+        return jsonify({"error": "Dokumen dan Tanda Tangan harus diunggah"}), 400
+        
+    file = request.files['file']
+    signature = request.files['signature']
+    
+    page_num = int(request.form.get('page', 0))
+    x = float(request.form.get('x', 0))
+    y = float(request.form.get('y', 0))
+    w = float(request.form.get('width', 150))
+    h = float(request.form.get('height', 50))
+
+    try:
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        file.save(temp_pdf.name)
+        
+        sig_bytes = signature.read()
+        
+        doc = fitz.open(temp_pdf.name)
+        page = doc.load_page(page_num)
+        
+        rect = fitz.Rect(x, y, x + w, y + h)
+        page.insert_image(rect, stream=sig_bytes)
+        
+        temp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_out.close()
+        doc.save(temp_out.name)
+        doc.close()
+        
+        dl_name = file.filename.replace('.pdf', '_tertanda.pdf')
+        return send_file(temp_out.name, as_attachment=True, download_name=dl_name)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        try:
+            if 'temp_pdf' in locals() and os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+        except: pass
+
+# --- FITUR PRO: REDAKSI (SENSOR TEKS) ---
+@app.route('/api/redact', methods=['POST'])
+def redact_pdf():
+    if 'file' not in request.files or 'text' not in request.form:
+        return jsonify({"error": "Data tidak lengkap"}), 400
+        
+    file = request.files['file']
+    text_to_redact = request.form['text']
+    
+    try:
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        file.save(temp_pdf.name)
+        
+        doc = fitz.open(temp_pdf.name)
+        for page in doc:
+            areas = page.search_for(text_to_redact)
+            for area in areas:
+                page.add_redact_annot(area, fill=(0, 0, 0))
+            page.apply_redactions()
+            
+        temp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_out.close()
+        doc.save(temp_out.name, garbage=3, deflate=True)
+        doc.close()
+        
+        dl_name = file.filename.replace('.pdf', '_tersensor.pdf')
+        return send_file(temp_out.name, as_attachment=True, download_name=dl_name)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        try:
+            if 'temp_pdf' in locals() and os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+        except: pass
+
+# --- FITUR PRO: OCR (GAMBAR/PDF KE TEKS) ---
+@app.route('/api/ocr', methods=['POST'])
+def ocr_pdf():
+    if 'file' not in request.files:
+        return jsonify({"error": "Tidak ada file"}), 400
+        
+    file = request.files['file']
+    
+    try:
+        import pytesseract
+        from PIL import Image
+        import io
+        
+        try:
+            pytesseract.get_tesseract_version()
+        except:
+            return jsonify({"error": "Tesseract-OCR belum diinstal di server. Silakan hubungi admin (apt install tesseract-ocr)."}), 500
+            
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        file.save(temp_pdf.name)
+        
+        doc = fitz.open(temp_pdf.name)
+        extracted_text = ""
+        
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap(dpi=200)
+            img_bytes = pix.tobytes("jpeg")
+            img = Image.open(io.BytesIO(img_bytes))
+            
+            try:
+                text = pytesseract.image_to_string(img, lang='ind+eng')
+            except:
+                text = pytesseract.image_to_string(img)
+            extracted_text += f"\n--- Halaman {i+1} ---\n\n{text}"
+            
+        doc.close()
+        
+        temp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
+        temp_out.write(extracted_text.encode('utf-8'))
+        temp_out.close()
+        
+        dl_name = file.filename.replace('.pdf', '_teks.txt')
+        return send_file(temp_out.name, as_attachment=True, download_name=dl_name)
+    except Exception as e:
+        return jsonify({"error": f"Gagal memproses OCR: {str(e)}"}), 500
+    finally:
+        try:
+            if 'temp_pdf' in locals() and os.path.exists(temp_pdf.name): os.remove(temp_pdf.name)
+        except: pass
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)

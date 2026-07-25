@@ -24,7 +24,7 @@ export default function App() {
         { id: 'split', label: 'Pisahkan PDF', icon: Scissors, desc: 'Ambil atau ekstrak halaman tertentu dari PDF.', isReady: true },
         { id: 'rotate', label: 'Putar PDF', icon: RefreshCw, desc: 'Putar halaman PDF (mengatur orientasi).', isReady: true },
         { id: 'watermark', label: 'Tambah Watermark', icon: Droplet, desc: 'Tambahkan teks watermark ke dokumen.', isReady: true },
-        { id: 'organize', label: 'Organisasi Lanjut', icon: Settings, desc: 'Hapus, susun ulang halaman dengan drag-and-drop.', isReady: false },
+        { id: 'organize', label: 'Organisasi Lanjut', icon: Settings, desc: 'Hapus, susun ulang halaman dengan drag-and-drop.', isReady: true },
       ]
     },
     {
@@ -41,9 +41,9 @@ export default function App() {
       title: "Keamanan & Lanjutan",
       items: [
         { id: 'protect', label: 'Proteksi PDF', icon: Lock, desc: 'Beri password pada PDF agar aman.', isReady: true }, 
-        { id: 'sign', label: 'Tanda Tangan (eSign)', icon: PenTool, desc: 'Tambahkan tanda tangan digital.', isReady: false },
-        { id: 'ocr', label: 'OCR (Teks ke Gambar)', icon: Scan, desc: 'Ekstrak teks dari hasil scan dokumen.', isReady: false },
-        { id: 'redact', label: 'Redaksi Dokumen', icon: ShieldAlert, desc: 'Hapus informasi sensitif secara permanen.', isReady: false },
+        { id: 'sign', label: 'Tanda Tangan (eSign)', icon: PenTool, desc: 'Tambahkan tanda tangan digital.', isReady: true },
+        { id: 'ocr', label: 'OCR (Teks ke Gambar)', icon: Scan, desc: 'Ekstrak teks dari hasil scan dokumen.', isReady: true },
+        { id: 'redact', label: 'Redaksi Dokumen', icon: ShieldAlert, desc: 'Hapus informasi sensitif secara permanen.', isReady: true },
       ]
     }
   ];
@@ -60,8 +60,9 @@ export default function App() {
 
   const SidebarContent = () => (
     <>
-      <div className="p-6 flex items-center sticky top-0 bg-white z-10 border-b border-gray-100">
+      <div className="p-6 flex items-center space-x-3 sticky top-0 bg-white z-10 border-b border-gray-100">
         <img src="/mylogo.png" alt="Logo" className="h-10 object-contain" />
+        <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">MDF PDF</span>
       </div>
       <div className="flex-1 overflow-y-auto pb-6">
         {menuCategories.map((category, idx) => (
@@ -110,8 +111,9 @@ export default function App() {
       {/* Mobile Header & Menu */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
         <div className="flex justify-between items-center p-4">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-2">
             <img src="/mylogo.png" alt="Logo" className="h-8 object-contain" />
+            <span className="text-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">MDF PDF</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -125,8 +127,8 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-20 md:pt-8 bg-gray-50 flex flex-col">
+        <div className="max-w-4xl mx-auto w-full flex-1">
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-800 flex items-center space-x-3">
               <currentTab.icon className="text-blue-600" size={32} />
@@ -149,16 +151,20 @@ export default function App() {
             {activeTab === 'office2pdf' && <OfficeToPDF />}
             {activeTab === 'pdf2jpg' && <PDFToJPG />} 
             {activeTab === 'protect' && <ProtectPDF />}
+            {activeTab === 'organize' && <OrganizePDF />}
+            {activeTab === 'sign' && <SignPDF />}
+            {activeTab === 'ocr' && <OCRPDF />}
+            {activeTab === 'redact' && <RedactPDF />}
             
             {/* Tampilan untuk fitur yang belum kita buat kodenya */}
             {!currentTab.isReady && <BackendRequiredFeature featureName={currentTab.label} />}
           </div>
-
-          {/* Footer */}
-          <footer className="mt-8 text-center text-gray-500 text-sm pb-4">
-            By MDF Media 22
-          </footer>
         </div>
+
+        {/* Footer */}
+        <footer className="mt-auto pt-8 text-center text-gray-500 text-sm pb-4">
+          By MDF Media 22
+        </footer>
       </main>
     </div>
   );
@@ -1185,4 +1191,299 @@ function downloadFile(bytes, filename, mimeType) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// 9. Organisasi Lanjut
+function OrganizePDF() {
+  const [files, setFiles] = useState([]);
+  const [pagesOrder, setPagesOrder] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) setFiles([droppedFilesArray[0]]);
+  };
+
+  const processBackend = async () => {
+    if (files.length === 0 || !pagesOrder) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Menyusun ulang halaman di server...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', files[0]);
+    formData.append('pages', pagesOrder);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/organize`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal memproses dokumen.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = files[0].name.replace('.pdf', '_terorganisir.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Berhasil disusun ulang!', type: 'success' });
+      setFiles([]);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih atau Tarik (Drag) 1 file PDF" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={() => setFiles([])} />
+        </div>
+      )}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        if(e.target.files.length > 0) setFiles([e.target.files[0]]);
+        e.target.value = null;
+      }} />
+      
+      {files.length > 0 && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Urutan Halaman Baru (0-based, pisahkan dengan koma):</label>
+          <input type="text" value={pagesOrder} onChange={(e) => setPagesOrder(e.target.value)} placeholder="Contoh: 2, 0, 1 (Halaman 3 jadi pertama, hal 1 ke-dua...)" className="w-full px-4 py-3 border border-gray-300 rounded-xl" />
+          <p className="text-xs text-gray-500">Catatan: Indeks halaman dimulai dari 0 (0 = Halaman 1, 1 = Halaman 2, dst).</p>
+        </div>
+      )}
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0 || !pagesOrder} icon={Settings} text="Proses Urutan" />
+    </div>
+  );
+}
+
+// 10. OCR PDF
+function OCRPDF() {
+  const [files, setFiles] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) setFiles([droppedFilesArray[0]]);
+  };
+
+  const processBackend = async () => {
+    if (files.length === 0) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Mengekstrak teks dengan OCR di server (Bisa memakan waktu beberapa menit)...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', files[0]);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/ocr`, { method: 'POST', body: formData });
+      if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Gagal memproses OCR.');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = files[0].name.replace('.pdf', '_teks.txt');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Teks berhasil diekstrak!', type: 'success' });
+      setFiles([]);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih dokumen PDF hasil scan untuk di-OCR" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={() => setFiles([])} />
+        </div>
+      )}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        if(e.target.files.length > 0) setFiles([e.target.files[0]]);
+      }} />
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0} icon={Scan} text="Ekstrak Teks (OCR)" />
+    </div>
+  );
+}
+
+// 11. Redaksi PDF
+function RedactPDF() {
+  const [files, setFiles] = useState([]);
+  const [textToRedact, setTextToRedact] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const handleFileDrop = (droppedFiles) => {
+    const droppedFilesArray = Array.from(droppedFiles).filter(f => f.type === 'application/pdf');
+    if (droppedFilesArray.length > 0) setFiles([droppedFilesArray[0]]);
+  };
+
+  const processBackend = async () => {
+    if (files.length === 0 || !textToRedact) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Menyensor teks di dokumen...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', files[0]);
+    formData.append('text', textToRedact);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/redact`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal menyensor dokumen.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = files[0].name.replace('.pdf', '_tersensor.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Dokumen berhasil disensor!', type: 'success' });
+      setFiles([]);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={handleFileDrop} text="Pilih dokumen PDF yang ingin disensor" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={() => setFiles([])} />
+        </div>
+      )}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        if(e.target.files.length > 0) setFiles([e.target.files[0]]);
+      }} />
+      
+      {files.length > 0 && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Teks/Kata yang Ingin Dihapus Secara Permanen (Sensor Hitam):</label>
+          <input type="text" value={textToRedact} onChange={(e) => setTextToRedact(e.target.value)} placeholder="Contoh: Rahasia" className="w-full px-4 py-3 border border-gray-300 rounded-xl" />
+        </div>
+      )}
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0 || !textToRedact} icon={ShieldAlert} text="Sensor Teks" />
+    </div>
+  );
+}
+
+// 12. Sign PDF
+function SignPDF() {
+  const [files, setFiles] = useState([]);
+  const [signature, setSignature] = useState(null);
+  const [pageNum, setPageNum] = useState(0);
+  const [x, setX] = useState(100);
+  const [y, setY] = useState(100);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  
+  const fileInputRef = useRef(null);
+
+  const processBackend = async () => {
+    if (files.length === 0 || !signature) return;
+    setIsProcessing(true);
+    setMessage({ text: 'Menambahkan tanda tangan ke dokumen...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('file', files[0]);
+    formData.append('signature', signature);
+    formData.append('page', pageNum);
+    formData.append('x', x);
+    formData.append('y', y);
+    formData.append('width', 150); // ukuran standar
+    formData.append('height', 50);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sign`, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Gagal menandatangani dokumen.');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = files[0].name.replace('.pdf', '_tertanda.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMessage({ text: 'Tanda tangan berhasil ditambahkan!', type: 'success' });
+      setFiles([]);
+      setSignature(null);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {files.length === 0 ? (
+        <UploadZone onUpload={() => fileInputRef.current.click()} onFileDrop={(df) => {
+            const f = Array.from(df).filter(file => file.type === 'application/pdf');
+            if(f.length>0) setFiles([f[0]]);
+        }} text="Pilih dokumen PDF yang ingin ditandatangani" />
+      ) : (
+        <div className="space-y-4">
+          <FileList files={files} onRemove={() => setFiles([])} />
+        </div>
+      )}
+      <input type="file" accept="application/pdf" className="hidden" ref={fileInputRef} onChange={(e) => {
+        if(e.target.files.length > 0) setFiles([e.target.files[0]]);
+      }} />
+
+      {files.length > 0 && (
+          <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pilih File Tanda Tangan (Gambar PNG/JPG):</label>
+                  <input type="file" accept="image/png, image/jpeg" onChange={(e) => {
+                      if(e.target.files.length > 0) setSignature(e.target.files[0]);
+                  }} className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white" />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Halaman (0-based):</label>
+                    <input type="number" value={pageNum} onChange={e => setPageNum(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Posisi X (Kiri):</label>
+                    <input type="number" value={x} onChange={e => setX(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Posisi Y (Atas):</label>
+                    <input type="number" value={y} onChange={e => setY(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+              </div>
+          </div>
+      )}
+      
+      <StatusMessage message={message} />
+      <ProcessButton onClick={processBackend} isProcessing={isProcessing} disabled={files.length === 0 || !signature} icon={PenTool} text="Tandatangani" />
+    </div>
+  );
 }

@@ -5,3 +5,5 @@ Werkzeug
 pikepdf
 PyMuPDF
 Pillow
+pytesseract
+pdf2image
