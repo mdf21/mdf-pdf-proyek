@@ -60,9 +60,8 @@ export default function App() {
 
   const SidebarContent = () => (
     <>
-      <div className="p-6 flex items-center space-x-3 text-blue-600 sticky top-0 bg-white z-10 border-b border-gray-100">
-        <FileText size={28} className="font-bold" />
-        <h1 className="text-xl font-bold tracking-tight">Super PDF</h1>
+      <div className="p-6 flex items-center sticky top-0 bg-white z-10 border-b border-gray-100">
+        <img src="/mylogo.png" alt="Logo" className="h-10 object-contain" />
       </div>
       <div className="flex-1 overflow-y-auto pb-6">
         {menuCategories.map((category, idx) => (
@@ -111,9 +110,8 @@ export default function App() {
       {/* Mobile Header & Menu */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
         <div className="flex justify-between items-center p-4">
-          <div className="flex items-center space-x-2 text-blue-600">
-            <FileText size={24} />
-            <h1 className="text-lg font-bold tracking-tight">Super PDF</h1>
+          <div className="flex items-center">
+            <img src="/mylogo.png" alt="Logo" className="h-8 object-contain" />
           </div>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
