@@ -58,54 +58,70 @@ export default function App() {
   };
   const currentTab = getActiveTabData();
 
-  const SidebarContent = () => (
-    <>
+  const SidebarContent = ({ showLogo = true }) => (
+  <>
+    {showLogo && (
       <div className="p-6 flex items-center space-x-3 sticky top-0 bg-white z-10 border-b border-gray-100">
         <img src="/mylogo.png" alt="Logo" className="h-10 object-contain" />
-        <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">MDF PDF</span>
+        <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
+          MDF PDF
+        </span>
       </div>
-      <div className="flex-1 overflow-y-auto pb-6">
-        {menuCategories.map((category, idx) => (
-          <div key={idx} className="mt-6 px-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">
-              {category.title}
-            </h3>
-            <div className="space-y-1">
-              {category.items.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-blue-50 text-blue-700 font-semibold shadow-sm' 
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Icon size={18} className={isActive ? 'text-blue-600' : 'text-gray-400'} />
-                      <span className="text-sm">{tab.label}</span>
-                    </div>
-                    {!tab.isReady && (
-                      <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">PRO</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+    )}
+
+    <div className="flex-1 overflow-y-auto pb-6">
+      {menuCategories.map((category, idx) => (
+        <div key={idx} className="mt-6 px-4">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">
+            {category.title}
+          </h3>
+
+          <div className="space-y-1">
+            {category.items.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? "bg-blue-50 text-blue-700 font-semibold shadow-sm"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Icon
+                      size={18}
+                      className={isActive ? "text-blue-600" : "text-gray-400"}
+                    />
+                    <span className="text-sm">{tab.label}</span>
+                  </div>
+
+                  {!tab.isReady && (
+                    <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">
+                      PRO
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </>
-  );
+        </div>
+      ))}
+    </div>
+  </>
+);
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-800 overflow-hidden">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-200 shadow-sm overflow-hidden">
-        <SidebarContent />
+        <SidebarContent showLogo={true} />
       </aside>
 
       {/* Mobile Header & Menu */}
@@ -121,7 +137,7 @@ export default function App() {
         </div>
         {isMobileMenuOpen && (
           <nav className="bg-white border-b border-gray-200 h-[80vh] overflow-y-auto">
-            <SidebarContent />
+            <SidebarContent showLogo={false} />
           </nav>
         )}
       </div>
