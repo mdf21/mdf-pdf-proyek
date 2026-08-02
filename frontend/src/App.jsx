@@ -179,7 +179,7 @@ export default function App() {
 
         {/* Footer */}
         <footer className="mt-auto pt-8 text-center text-gray-500 text-sm pb-4">
-          By MDF Media 22
+          By MDFMedia22
         </footer>
       </main>
     </div>
