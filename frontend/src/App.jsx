@@ -64,7 +64,7 @@ export default function App() {
       <div className="p-6 flex items-center space-x-3 sticky top-0 bg-white z-10 border-b border-gray-100">
         <img src="/mylogo.png" alt="Logo" className="h-10 object-contain" />
         <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
-          MDF PDF
+          MIMH PDF
         </span>
       </div>
     )}
